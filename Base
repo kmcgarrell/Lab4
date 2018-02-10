@@ -312,30 +312,35 @@ void loop()
         
        if((ui_Right_Line_Tracker_Data>(ui_Right_Line_Tracker_Light+ci_Line_Tracker_Tolerance))&&(ui_Left_Line_Tracker_Data>(ui_Left_Line_Tracker_Light+ci_Line_Tracker_Tolerance))&&(ui_Middle_Line_Tracker_Data > (ui_Middle_Line_Tracker_Light+ci_Line_Tracker_Tolerance)))
        {
-          servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
+         servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
           servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);
-          while (collect==1)
+          //delay(5000);
+          Serial.println("if works");
+          while (true)
           {
+            Serial.println("IN LOOP");
+            
               servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
-              servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
-              delay(500);
+              servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed+100);
               servo_GripMotor.write(ci_Grip_Motor_Open);
               servo_ArmMotor.write(ci_Arm_Servo_Extended-50);
+              servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
+              servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);
               void Ping();
-              long distance = 12;
+              long distance = 10;
               while ((ul_Echo_Time/58)> distance)
               {
                 void Ping();
                 servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
                 servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
               }
-              servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
-              servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);
+              //servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+              //servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);
               servo_ArmMotor.write(ci_Arm_Servo_Extended);
               servo_GripMotor.write(ci_Grip_Motor_Closed);
-              
+              //collect=2;
+              break;
           }
-       
        }
        //prevmillis = counter;
        
