@@ -152,7 +152,9 @@ boolean bt_Cal_Initialized = false;
 bool LeftLED=0;
 bool MiddleLED=0;
 bool RightLED=0;
-int stage = 0;
+bool TurningL =0;
+bool TurningR=0;
+int state = 0;
 
 void setup() {
   Wire.begin();        // Wire library required for I2CEncoder library
@@ -352,7 +354,7 @@ void loop()
         servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed+150);
         servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
         }
-        while (millis()-timer<500)
+        while (millis()-timer1<500)
         {
            servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
           servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);
@@ -365,8 +367,8 @@ void loop()
         {
           //follow lined until it reaches crack, then update state
           FollowLine();
-          timer1 = millis();
-          if (millis()-timer1>3500)
+          int timer1 = millis();
+          if (millis()-timer1>3000)
           {
             state++;
           }
@@ -377,19 +379,19 @@ void loop()
         {
         //go straight until all leds are on the black box
         servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
-        servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
+        servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed+20);
         if (!LeftLED&&!RightLED&&!MiddleLED)
         {
-          state++;
         servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
         servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);
+        state++;
         }
         break;
         }
-        case 3:
+        case3:
         {
-          //turn towards drop off
-         int timer1 = millis();
+    
+        int timer1 = millis();
         while (millis()-timer1<1500)
         {
          servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
@@ -423,8 +425,11 @@ void loop()
         servo_ArmMotor.write(ci_Arm_Servo_Extended);
        }
        }
+        
+        break;
         }
         }
+        
 
        
 #ifdef DEBUG_MOTORS
@@ -640,7 +645,7 @@ void readLineTrackers()
   if(ui_Middle_Line_Tracker_Data < (ui_Middle_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))
   {
     CharliePlexM::Write(ci_Middle_Line_Tracker_LED, HIGH);
-    MiddledLED = 1;
+    MiddleLED = 1;
   }
   else
   { 
