@@ -86,10 +86,10 @@ const int ci_Right_Motor_Offset_Address_H = 15;
 
 const int ci_Left_Motor_Stop = 1500;        // 200 for brake mode; 1500 for stop
 const int ci_Right_Motor_Stop = 1500;
-const int ci_Grip_Motor_Open = 200;         // Experiment to determine appropriate value
-const int ci_Grip_Motor_Closed = 90;        //  "
-const int ci_Arm_Servo_Retracted = 0;      //  "
-const int ci_Arm_Servo_Extended = 90;      //  "
+const int ci_Grip_Motor_Open = 200;         // Experiment to determine appropriate value (Originally 90)
+const int ci_Grip_Motor_Closed = 30;        //  " (Originally 90)
+const int ci_Arm_Servo_Retracted = 0;      //  " (Originally 55)
+const int ci_Arm_Servo_Extended = 90;      //  " (Originally 120)
 const int ci_Display_Time = 500;
 const int ci_Line_Tracker_Calibration_Interval = 100;
 const int ci_Line_Tracker_Cal_Measures = 20;
@@ -97,7 +97,17 @@ const int ci_Line_Tracker_Tolerance = 50;   // May need to adjust this
 const int ci_Motor_Calibration_Cycles = 3;
 const int ci_Motor_Calibration_Time = 5000;
 
+const int ci_Light_Level = 200;             // May need to adjust
+const int ci_Dark_Level = 600;
+const int ci_Distance = 5;                  // [cm]; may need to adjust
+
 //variables
+
+unsigned int counter = 1;
+unsigned int lightSum1 = 0;
+unsigned int lightSum2 = 0;
+unsigned long startTime = 0;
+
 byte b_LowByte;
 byte b_HighByte;
 unsigned long ul_Echo_Time;
@@ -148,13 +158,6 @@ boolean bt_Heartbeat = true;
 boolean bt_3_S_Time_Up = false;
 boolean bt_Do_Once = false;
 boolean bt_Cal_Initialized = false;
-
-bool LeftLED=0;
-bool MiddleLED=0;
-bool RightLED=0;
-bool TurningL =0;
-bool TurningR=0;
-int state = 0;
 
 void setup() {
   Wire.begin();        // Wire library required for I2CEncoder library
@@ -271,6 +274,7 @@ void loop()
       encoder_LeftMotor.zero();
       encoder_RightMotor.zero();
       ui_Mode_Indicator_Index = 0;
+      //Serial.print(digitalRead(ci_Light_Sensor));
       break;
     } 
   
@@ -294,143 +298,153 @@ void loop()
         ui_Left_Motor_Speed = constrain(ui_Motors_Speed + ui_Left_Motor_Offset, 1600, 1650);
         ui_Right_Motor_Speed = constrain(ui_Motors_Speed + ui_Right_Motor_Offset, 1600, 1650);
 
-        switch (state)
-        {
-        case 0:
-        {
-         //making the first turn
-        int timer1 = millis();
-        while (millis()-timer1<1500)
-        {
-         servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
-        servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
-        }
-        //opening the claw
-       timer1 = millis();
-       while(millis()-timer1<500)
-       {
-       
-        servo_GripMotor.write(ci_Grip_Motor_Open);
-         servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
-        servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);
-       }
-       //extending the arm
-       timer1 = millis();
-       while(millis()-timer1<1000)
-       {
-        
-        servo_ArmMotor.write(ci_Arm_Servo_Extended);       
-       }
-       //closing claw
-        timer1 = millis();
-       while(millis()-timer1<500)
-       {
-       servo_GripMotor.write(ci_Grip_Motor_Closed);
-        
-       }
-       //retracting arm
-      timer1 = millis();
-       while(millis()-timer1<500)
-       {
-        servo_ArmMotor.write(ci_Arm_Servo_Retracted);
-       }
-      
-        //reversing on one wheel
-       timer1 = millis();
-        while (millis()-timer1<500)
-        {
-         servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
-        servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed-500 );
-        }
-        //stopping
-        timer1=millis();
-        while (millis()-timer1<500){
-        servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
-        servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);
-        }
-        //adjusting and finding the black line again
-         timer1=millis();
-        while (millis()-timer1<500){
-        servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed+150);
-        servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
-        }
-        while (millis()-timer1<500)
-        {
-           servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
-          servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);
-        }
-        //moving into the line following portion
-        state ++; 
-        break;
-        }
-        case 1:
-        {
-          //follow lined until it reaches crack, then update state
-          FollowLine();
-          int timer1 = millis();
-          if (millis()-timer1>3000)
-          {
-            state++;
-          }
-          break;
-        }
-       
-        case 2:
-        {
-        //go straight until all leds are on the black box
-        servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
-        servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed+20);
-        if (!LeftLED&&!RightLED&&!MiddleLED)
-        {
-        servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
-        servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);
-        state++;
-        }
-        break;
-        }
-        case3:
-        {
-    
-        int timer1 = millis();
-        while (millis()-timer1<1500)
-        {
-         servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
-        servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
-        }
-        //extend
-       timer1 = millis();
-       while(millis()-timer1<1000)
-       {
-        
-        servo_ArmMotor.write(ci_Arm_Servo_Extended);       
-       }
-       //open
-        timer1 = millis();
-       while(millis()-timer1<1500)
-       {
-       servo_GripMotor.write(ci_Grip_Motor_Open);
-        
-       }
-       //shake to let go
-       while (true)
-       {
-      timer1 = millis();
-       while(millis()-timer1<500)
-       {
-        servo_ArmMotor.write(ci_Arm_Servo_Retracted);
-       }
-        timer1 = millis();
-       while(millis()-timer1<500)
-       {
-        servo_ArmMotor.write(ci_Arm_Servo_Extended);
-       }
-       }
-        
-        break;
-        }
-        }
-        
+       /***************************************************************************************
+         Add line tracking code here. 
+         Adjust motor speed according to information from line tracking sensors and 
+         possibly encoder counts.
+       /*************************************************************************************/
 
+        // Turn right until only middle sensor sees white
+        if(counter == 1) {
+          //servo_LeftMotor.writeMicroseconds(1590);
+          //Serial.print(digitalRead(ci_Light_Sensor));
+          //if(digitalRead(ci_Light_Sensor) == 0) {    // Check if IR sensor sees light (1 =  no light, 0 = light)
+           int timer=millis();
+           while(millis()-timer<1000)
+           {
+            servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed);
+            }
+            servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop);
+          counter++;
+        }
+
+        // Open claw
+        if(counter == 2) {
+          servo_GripMotor.write(ci_Grip_Motor_Open);
+          counter++;
+          Serial.print("Open claw");
+          delay(500);
+        }
+
+        // Extend arm
+        if(counter == 3) {
+          servo_ArmMotor.write(ci_Arm_Servo_Extended);
+          counter++;
+          delay(500);
+        }
+
+        // Close claw
+        if(counter == 4) {
+          servo_GripMotor.write(ci_Grip_Motor_Closed);
+          counter++;
+          delay(500);
+        }
+
+        // Retract arm
+        if(counter == 5) {
+          servo_ArmMotor.write(ci_Arm_Servo_Retracted);
+          counter++;
+          delay(500);
+          startTime = millis();
+        }
+
+        // Reverse until all sensors see white
+        if(counter == 6) {
+          servo_LeftMotor.writeMicroseconds(1400);
+          if((millis() - startTime > 1500) && (ui_Left_Line_Tracker_Data + ui_Middle_Line_Tracker_Data + ui_Right_Line_Tracker_Data < 3 * ci_Light_Level)) {
+            delay(300);
+            servo_LeftMotor.writeMicroseconds(1500);
+            servo_RightMotor.writeMicroseconds(1640);
+            startTime = millis();
+            counter++;
+          }
+        }
+
+        if(counter == 7) {
+          if((millis() - startTime > 1500) && (ui_Middle_Line_Tracker_Data < ci_Light_Level)) {
+            servo_RightMotor.writeMicroseconds(1500);
+            startTime = millis();
+            counter++;
+          }
+        }
+
+        // Line track until all sensors see white (6)
+        if(counter == 8) {
+          lineTrack();
+          if((millis() - startTime > 10000) && (ui_Left_Line_Tracker_Data + ui_Middle_Line_Tracker_Data + ui_Right_Line_Tracker_Data > 3 * ci_Dark_Level)) {
+            servo_RightMotor.writeMicroseconds(1800);
+            servo_LeftMotor.writeMicroseconds(1700);
+            delay(1000);
+            startTime = millis();
+            counter++;
+          }
+        }
+
+        // Keep line tracking after crossing gap
+        if(counter == 9) {
+          lineTrack();
+          if(/*(millis() - startTime > 5000) &&*/ (ui_Left_Line_Tracker_Data + ui_Middle_Line_Tracker_Data + ui_Right_Line_Tracker_Data < 3 * ci_Light_Level)) {
+              servo_LeftMotor.writeMicroseconds(1500);      // Turn off both motors if they all see white
+            servo_RightMotor.writeMicroseconds(1500); // Turn off both motors if they all see white
+            startTime = millis();
+            counter++;
+          }
+          int timer1=millis();
+
+          while(millis()-timer1<500)
+          {
+            servo_LeftMotor.writeMicroseconds(1650);      // Turn off both motors if they all see white
+            servo_RightMotor.writeMicroseconds(1650);
+          }
+        }
+
+        // Turn right until only middle sensor sees white (1)
+        if(counter == 10) {
+          servo_LeftMotor.writeMicroseconds(1630);
+          if((millis() - startTime > 1500) && (ui_Middle_Line_Tracker_Data < ci_Light_Level)) {   // Check if middle light sensor sees white
+            servo_RightMotor.writeMicroseconds(1640);
+            startTime = millis();
+            counter++;
+          }
+        }
+
+        // Line track until all sensors see white (6)
+        if(counter == 11) {
+          lineTrack();
+          if((millis() - startTime > 500) && (ui_Left_Line_Tracker_Data + ui_Middle_Line_Tracker_Data + ui_Right_Line_Tracker_Data < 3 * ci_Light_Level)) {
+            servo_LeftMotor.writeMicroseconds(1500);      // Turn off both motors if they all see white
+            servo_RightMotor.writeMicroseconds(1500);
+            counter++;
+          }
+        }
+
+        // Extend arm (3)
+        if(counter == 12) {
+          servo_ArmMotor.write(ci_Arm_Servo_Extended);
+          counter++;
+          delay(500);
+        }
+
+        // Open claw (2)
+        if(counter == 13) {
+          servo_GripMotor.write(ci_Grip_Motor_Open);
+          counter++;
+          delay(1500);
+        } 
+
+        // Retract arm
+        if(counter == 14) {
+          servo_ArmMotor.write(ci_Arm_Servo_Retracted);
+          counter++;
+          delay(500);
+        }
+
+        // Close claw
+        if(counter == 15) {
+          servo_GripMotor.write(ci_Grip_Motor_Closed);
+          counter++;
+          delay(500);
+        }
        
 #ifdef DEBUG_MOTORS
         Serial.print("Motors enabled: ");
@@ -446,7 +460,7 @@ void loop()
       }
       break;
     } 
-    
+
     case 2:    //Calibrate line tracker light levels after 3 seconds
     {
       if(bt_3_S_Time_Up)
@@ -597,7 +611,7 @@ void loop()
         ui_Mode_Indicator_Index = 4;
       } 
       break;
-    }    
+    }   
   }
 
   if((millis() - ul_Display_Time) > ci_Display_Time)
@@ -635,32 +649,26 @@ void readLineTrackers()
   if(ui_Left_Line_Tracker_Data < (ui_Left_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))
   {
     CharliePlexM::Write(ci_Left_Line_Tracker_LED, HIGH);
-    LeftLED =1;
   }
   else
   { 
     CharliePlexM::Write(ci_Left_Line_Tracker_LED, LOW);
-    LeftLED=0;
   }
   if(ui_Middle_Line_Tracker_Data < (ui_Middle_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))
   {
     CharliePlexM::Write(ci_Middle_Line_Tracker_LED, HIGH);
-    MiddleLED = 1;
   }
   else
   { 
     CharliePlexM::Write(ci_Middle_Line_Tracker_LED, LOW);
-    MiddleLED=0;
   }
   if(ui_Right_Line_Tracker_Data < (ui_Right_Line_Tracker_Dark - ui_Line_Tracker_Tolerance))
   {
     CharliePlexM::Write(ci_Right_Line_Tracker_LED, HIGH);
-    RightLED=1;
   }
   else
   { 
     CharliePlexM::Write(ci_Right_Line_Tracker_LED, LOW);
-    RightLED=0;
   }
 
 #ifdef DEBUG_LINE_TRACKERS
@@ -695,80 +703,21 @@ void Ping()
   Serial.print(", cm: ");
   Serial.println(ul_Echo_Time/58); //divide time by 58 to get distance in cm 
 #endif
-}  
-void FollowLine(void){
-  
-      //HHH
-      if(LeftLED && MiddleLED && RightLED&& !TurningL  && !TurningR){
-      servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop); 
-      servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);   
-      }
-      //LLL
-      else if(!LeftLED && !MiddleLED && !RightLED){
-      servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop); 
-      servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);
-      TurningL = 0;
-      TurningR = 0;   
-      }
-      //HLH
-      else if(LeftLED && !MiddleLED && RightLED){
-      servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed); 
-      servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
-      TurningR = 0; 
-      TurningL = 0;   
-      }
-      //LHH
-      else if(!LeftLED && MiddleLED && RightLED){
-      servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop); 
-      servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);   
-          TurningR = 0; 
-      TurningL = 1;
-      }
-      //HHL
-      else if(LeftLED && MiddleLED && !RightLED){
-      servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed); 
-      servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);  
-      TurningR = 1; 
-      TurningL = 0; 
-      }
-      //LLH
-      else if(!LeftLED && !MiddleLED && RightLED){
-      servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop); 
-      servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);
-      TurningR = 1; 
-      TurningL = 0;  
-      }
-      //HLL
-      else if(LeftLED && !MiddleLED && !RightLED){
-      servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed); 
-      servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop); 
-      TurningL =1;
-      TurningR = 0;  
-      }
-      //LHL
-          //HHH
-      else if(LeftLED && MiddleLED && RightLED&& TurningL  && !TurningR){
-      servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop); 
-      servo_RightMotor.writeMicroseconds(ui_Right_Motor_Speed);   
-      }
-          //HHH
-      else if(LeftLED && MiddleLED && RightLED&& !TurningL  && TurningR){
-      servo_LeftMotor.writeMicroseconds(ui_Left_Motor_Speed); 
-      servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);   
-      }
-  
-      else {
-      servo_LeftMotor.writeMicroseconds(ci_Left_Motor_Stop); 
-      servo_RightMotor.writeMicroseconds(ci_Right_Motor_Stop);  
-      TurningL = 0;
-      TurningR = 0; 
-      }
-
-  
 }
 
+// Line-tracking
+void lineTrack()
+{
+  if(ui_Middle_Line_Tracker_Data < 200) {
+        servo_RightMotor.writeMicroseconds(1640);
+        servo_LeftMotor.writeMicroseconds(1640);
+      }
 
+      if(ui_Left_Line_Tracker_Data < 200) {
+        servo_LeftMotor.writeMicroseconds(1500);
+      }
 
-
-
-
+      if(ui_Right_Line_Tracker_Data < 200) {
+        servo_RightMotor.writeMicroseconds(1500);
+      }
+}
